@@ -6,8 +6,7 @@ import sklearn.metrics as skmet
 import sklearn.cluster as cluster
 import scipy.optimize as opt
 import itertools as iter
-# import errors as err
-# help(err)
+# importing required modules
 def read_file(path):
     """This function will take path as a parameter
        and reads the csv file and returns two data frames one with 
@@ -63,6 +62,7 @@ def yearly_data(df):
 
 
 def preprocessing_data(df, column, drop_columns):
+    """Preprocessing the data before plotting cluster and scatter matrix"""
     # droping unused columns
     df =df.drop(columns=['Country Name','Country Code'])
     #transposing the data and assing the custom columns
@@ -77,9 +77,9 @@ def preprocessing_data(df, column, drop_columns):
     return df_t
     
 def Clustermap_plot(df_t,image_name):
-    """This function used to produce heat map of the given data frame
+    """This function used to produce cluster map of the given data frame
        seperating the data with respect to country. it takes color as
-       parameter in order to change the colors of heat map."""   
+       parameter in order to change the colors of cluster map."""   
        
     plt.figure()
     #plotting the cluster map using seaborn module
@@ -89,9 +89,8 @@ def Clustermap_plot(df_t,image_name):
     plt.show()
     
 def scattermap_plot(df_t,image_name):
-    """This function used to produce heat map of the given data frame
-       seperating the data with respect to country. it takes color as
-       parameter in order to change the colors of heat map."""
+    """This function used to produce scatter map of the given data frame
+       seperating the data with respect to country."""
        
     pd.plotting.scatter_matrix(df_t, figsize=(9.0, 9.0))
     plt.tight_layout() # helps to avoid overlap of labels
@@ -99,7 +98,7 @@ def scattermap_plot(df_t,image_name):
     plt.show()
     
 def norm(array):
-    """ Returns array normalised to [0,1]. Array can be a numpy array
+    """ Returns array normalised. Array can be a numpy array
     or a column of a dataframe"""
     min_val = np.min(array)
     max_val = np.max(array)
@@ -109,12 +108,8 @@ def norm(array):
 def norm_df(df):
 
     """
-    Returns all columns of the dataframe normalised to [0,1] with the
-    exception of the first (containing the names)
-    Calls function norm to do the normalisation of one column, but
-    doing all in one function is also fine.
+    Calls function norm to do the normalisation of one column
     First, last: columns from first to last (including) are normalised.
-    Defaulted to all. None is the empty entry. The default corresponds
     """
     # iterate over all numerical columns
     for col in df.columns[0:]: # excluding the first column
@@ -122,6 +117,7 @@ def norm_df(df):
     return df
 
 def kmeans_clusters(df):
+    """Implements the k-means clustering for the input data frame"""
     for ic in range(2, 9):
         # set up kmeans and fit
         kmeans = cluster.KMeans(n_clusters=ic)
@@ -131,6 +127,7 @@ def kmeans_clusters(df):
         print (ic, skmet.silhouette_score(df, labels))
         
 def cluster_plot(df,cluster_num):
+    """ plots the scatter plot for the cluster applied data"""
     kmeans = cluster.KMeans(n_clusters= cluster_num)
     kmeans.fit(df)
     # extract labels and cluster centres
@@ -138,9 +135,6 @@ def cluster_plot(df,cluster_num):
     cen = kmeans.cluster_centers_
     plt.figure(figsize=(6.0, 6.0))
     col = df.columns.tolist()
-    # Individual colours can be assigned to symbols. The label l is used to the␣
-
-    # l-th number from the colour table.
     plt.scatter(df[col[0]], df[col[1]], c=labels, cmap="Accent")
     for ic in range(cluster_num):
         xc, yc = cen[ic,:]
@@ -152,7 +146,7 @@ def cluster_plot(df,cluster_num):
     plt.show()
 
 def logistics(t, scale, growth, t0):
-    """ Computes logistics function with scale, growth raat
+    """ Computes logistics function with scale, growth rate
     and time of the turning point as free parameters
     """
     f = scale / (1.0 + np.exp(-growth * (t - t0)))
@@ -162,33 +156,34 @@ pd_list = read_file('c0017547-d307-4149-af5e-579fb3c706de_Data.csv')
 
 pd_countries = pd_list[0]
 pd_years = pd_list[1]
-#print(pd_countries['1995'])
 
-#df_info(pd_countries)
+
+df_info(pd_countries)
 col = ['GDP','GDP Per Capita','Exports','Imports','Agriculture','Industry'
         ,'Tax','Total Employment','Self-employed'
         ,'New bussiness','Reasearch']
 
-
+ #extracting only uk data
 pd_uk = pd_countries[pd_countries['Country Name']=='United Kingdom']
 pd_uk = preprocessing_data(pd_uk, column=col, drop_columns=['New bussiness', 
                                           'Self-employed','GDP Per Capita'])
-
+# plotting cluster and scatter map
 Clustermap_plot(pd_uk, image_name='Cluster Map for UK')
 
 scattermap_plot(pd_uk, 'scatter plot matrix for UK')
 
+# normilizing the data
 pd_uk_fit = pd_uk[['Imports','Exports']].copy()
 pd_uk_fit = norm_df(pd_uk_fit)
 
 print(pd_uk_fit.describe())
 
 
-
+# applyimng k-means clustering
 kmeans_clusters(pd_uk_fit)
 cluster_plot(pd_uk_fit, cluster_num=8)
 cluster_plot(pd_uk_fit, cluster_num=3)
-
+#finding the best suitable no of clusters using plots and silhouette_score
 
 pd_uk_fit1 = pd_uk[['Total Employment','Tax']].copy()
 pd_uk_fit1 = norm_df(pd_uk_fit1)
@@ -197,6 +192,7 @@ kmeans_clusters(pd_uk_fit1)
 cluster_plot(pd_uk_fit1, cluster_num=2)
 cluster_plot(pd_uk_fit1, cluster_num=5)
 
+# performing some data tranformation to apply fitting
 pd_years_uk = pd_years['United Kingdom']
 pd_years_uk.columns = col
 pd_years_uk['years'] = pd_countries.loc[:,'1992':'2014'].columns.tolist()
@@ -213,8 +209,10 @@ def exp_growth(t, scale, growth):
     f = scale * np.exp(growth * (t-1950))
     return f
 
-def exp_fit_plot(popt, title):
-    pd_years_uk["pop_exp"] = exp_growth(pd_years_uk["years"], *popt)
+def exp_fit_plot(para, title):
+    """plots the exponential growth for the given parameters
+    """
+    pd_years_uk["pop_exp"] = exp_growth(pd_years_uk["years"], *para)
 
     plt.figure()
     plt.plot(pd_years_uk["years"], pd_years_uk["GDP"], label="original data")
@@ -226,8 +224,9 @@ def exp_fit_plot(popt, title):
     plt.ylabel("GDP growth %")
     plt.show()
 
-def log_fit_plot(popt, title):
-    pd_years_uk["pop_exp"] = logistics(pd_years_uk["years"], *popt)
+def log_fit_plot(para, title):
+    """plots the logistic growth for the given parameters"""
+    pd_years_uk["pop_exp"] = logistics(pd_years_uk["years"], *para)
 
     plt.figure()
     plt.plot(pd_years_uk["years"], pd_years_uk["GDP"], label="original data")
@@ -239,46 +238,49 @@ def log_fit_plot(popt, title):
     plt.ylabel("GDP growth %")
     plt.show()
 
-popt, covar = opt.curve_fit(exp_growth, pd_years_uk["years"],pd_years_uk['GDP'])
+# performing expnential fiiting
+para, cv = opt.curve_fit(exp_growth, pd_years_uk["years"],pd_years_uk['GDP'])
+
+# trying to find the best suitable parameters
+print(para)
+exp_fit_plot(para, 'Frist Attempt')
 
 
-print(popt)
-exp_fit_plot(popt, 'Frist Attempt')
+
+para = [2e0,0.01]
+exp_fit_plot(para, 'second Attempt')
 
 
-
-popt = [2e0,0.01]
-exp_fit_plot(popt, 'second Attempt')
-
-
-popt, covar = opt.curve_fit(exp_growth, pd_years_uk['years']
+para, cv = opt.curve_fit(exp_growth, pd_years_uk['years']
                             , pd_years_uk['GDP'], p0=[2e0,0.01])
-print(popt)
-exp_fit_plot(popt, 'Final Attempt for  exponential Growth fit')
+print(para)
+exp_fit_plot(para, 'Final Attempt for  exponential Growth fit')
                     
 
 
-popt = [3e0, 0.02, 1980]
+para = [3e0, 0.02, 1980]
 
-log_fit_plot(popt, title= 'log start value')
+# performing the logistics fitting
+
+log_fit_plot(para, title= 'log start value')
 
 
-popt, covar = opt.curve_fit(logistics, pd_years_uk['years']
+para, cv = opt.curve_fit(logistics, pd_years_uk['years']
                             , pd_years_uk['GDP'], p0=[2e2,0.04, 1980])
-log_fit_plot(popt, title = 'Logistic Fit')
+log_fit_plot(para, title = 'Logistic Fit')
 
-
+# arranging years for future trend
 years = np.arange(1992,2030)
 
+# finding the low and high values through err_ranges
+sigma = np.sqrt(np.diag(cv))
 
-sigma = np.sqrt(np.diag(covar))
-
-low = logistics(years, *popt)
+low = logistics(years, *para)
 upp = low
 
 list_ul = []
 
-for p,s in zip(popt, sigma):
+for p,s in zip(para, sigma):
     pmin = p - s
     pmax = p + s
     list_ul.append((pmin, pmax))
@@ -288,8 +290,8 @@ for p in pmix:
    y = logistics(years, *p)
    low = np.minimum(low, y)
    upp = np.maximum(upp, y)
-
-forecasting = logistics(years, *popt)
+# forecasting the future trend of gdp growth % and ploting the trend
+forecasting = logistics(years, *para)
 
 plt.figure()
 plt.plot(pd_years_uk["years"], pd_years_uk["GDP"], label="original data")
